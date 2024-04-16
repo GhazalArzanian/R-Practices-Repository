@@ -434,7 +434,7 @@ mean_square_error_4(df)
 
     ## [1] 1.0249956 0.9952113 1.0685500 1.0707264
 
-# Q6
+
 
 ## Measuring and improving performance
 
