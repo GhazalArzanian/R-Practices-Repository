@@ -1,7 +1,6 @@
 ---
 title: "Case Study 1 - Gruppe 12"
-output:
-    github_document
+output:github_document
 ---
 
 # Q1
