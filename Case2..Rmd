@@ -1,0 +1,416 @@
+---
+title: "Case Study 2"
+author: "Gruppe12"
+date: "2024-05-05"
+output:
+  html_document: default
+  pdf_document: default
+---
+## Task a:
+
+**Load Datasets**
+Load the datasets for median age, net migration rate, and youth unemployment rate. For the median age and net migration rate datasets, the lines are cleaned and split based on whitespace.
+
+```{r}
+library(readr)
+library(tidyr)
+library(dplyr)
+```
+
+```{r}
+rawdata_343 <- "rawdata_343.txt"
+rawdata_343 <- read_fwf(rawdata_343,skip = 2, fwf_positions(start = c(9, 75), end = c(74, 79), col_names = c("country", "median_age")), col_types = cols(country = col_character(), median_age = col_double()))
+rawdata_347 <- "rawdata_347.txt"
+rawdata_347 <- read_fwf(rawdata_347,skip = 2, fwf_positions(start = c(9, 73), end = c(72, 79), col_names = c("country", "migration_rate")), col_types = cols(country = col_character(), migration_rate = col_double()))
+
+rawdata_373 <- "rawdata_373.csv"
+rawdata_373 <- read_csv(rawdata_373, skip =1, col_names = c("country", "youth_unempl_rate"), col_types = cols(country = col_character(), youth_unempl_rate = col_double()))
+
+
+head(rawdata_343)
+head(rawdata_347)
+head(rawdata_373)
+```
+
+## Task b: 
+
+**Merge Datasets**
+we used full_join from dplyr on the  country column to merge the three
+
+```{r}
+merged_data <- full_join(full_join(rawdata_347, rawdata_373, by = "country"), rawdata_343, by = "country")
+
+head(merged_data)
+dim(rawdata_347)
+dim(rawdata_373)
+dim(rawdata_343)
+dim(merged_data)
+
+```
+
+## Task C: 
+
+
+```{r}
+data2020 <- read.csv("2020_Data.csv")
+dim(data2020)
+```
+
+## Task d:
+The common variable is the country name. However, we cannot merge using country names because they are not standardized. Therefore we use the standardized ISO alpha-3 codes.
+```{r}
+country_codes <- read.csv("Country_Data_Codes.csv")
+
+
+merged_data <- merge(merged_data, country_codes[, c("Name", "GENC")], by.x = "country", by.y = "Name", all.x = TRUE)
+
+
+merged_data <- merged_data[, c("country", "GENC", setdiff(colnames(merged_data), c("country", "GENC")))]
+
+data2020 <- subset(data2020, select = -country)
+
+merged_data <- left_join(merged_data, data2020, by = "GENC")
+
+dim(merged_data)
+
+```
+
+## Task e: 
+
+**Continent and Region Data**
+Load the continent and region data, then merge it with the current dataset and give the right name to each column and rearrange them.
+```{r}
+library(readr)
+
+continents <- "Country_Details.csv"
+
+details <- read_csv(continents, 
+                      col_names = TRUE, 
+                      col_select = c("alpha-3", "region", "sub-region"), 
+                      col_types = cols("alpha-3" = col_character(), 
+                                       "region" = col_character(), 
+                                       "sub-region" = col_character()))
+
+names(details)[names(details) == "alpha-3"] <- "GENC"
+names(details)[names(details) == "region"] <- "continent"
+names(details)[names(details) == "sub-region"] <- "region"
+df_vars <- left_join(merged_data,details, by= "GENC")
+df_vars$continent[df_vars$GENC == "XWB"] <- "Asia"
+df_vars$region[df_vars$GENC == "XWB"] <- "Western Asia"
+df_vars$continent[df_vars$GENC == "XGZ"] <- "Asia"
+df_vars$region[df_vars$GENC == "XGZ"] <- "Western Asia"
+df_vars$continent[df_vars$GENC == "XKS"] <- "Europe"
+df_vars$region[df_vars$GENC == "XKS"] <- "Eastern Europe"
+df_vars$continent[df_vars$GENC == "TWN"] <- "Asia"
+df_vars$region[df_vars$GENC == "TWN"] <- "Eastern Asia"
+df_vars$region[df_vars$GENC == "TWN"] <- "Eastern Asia"
+order_income <- c("H", "UM", "LM", "L")
+df_vars$Income <- factor(df_vars$Income, levels = order_income)
+head(df_vars)
+
+
+
+
+```
+## Task f: 
+
+**Discuss Tidiness of the Dataset df_vars**
+Observational Units:
+In the dataset df_vars, the observational unit is each individual country, identified by its name and standardized ISO code. Each row represents a unique country entity.
+
+Fixed Variables:
+Country: The name of the country.
+ISO Code (GENC): A unique identifier for the country.
+Continent: The continent to which the country belongs.
+Region: The specific region within the continent.
+Income Status: The economic classification of the country separated to H for high income,UM for upper-middle income,LM for lower-middle income and L for low income.
+
+Measured Variables:
+Median Age: The median age of the population.
+Youth Unemployment Rate: The unemployment rate for people aged 15-24.
+Net Migration Rate: The difference between the number of people entering and leaving the country per 1,000 persons.
+
+
+## Task g: 
+
+**Frequency table for the status variable in the merged data set**
+
+Commentary:
+Almost 50% of all countries are in one of the middle income groups, where they are also equally distributed. About a 30% of all countries have high income and roughly over 10% are low income countries.
+
+High (H): 79 countries fall under the high-income status, indicating a substantial number of countries with advanced economic development and high per capita income. This status generally correlates with strong healthcare, education, and infrastructure systems.
+
+Upper-Middle (UM): 55 countries are categorized as upper-middle-income. These countries have economies that are more developed than lower-middle-income nations but not yet at the level of high-income countries. They often have rapidly growing industrial sectors and increasing exports.
+
+Lower-Middle (LM): 55 countries are in the lower-middle-income bracket. These nations are in a transitional phase from low to middle-income status, experiencing gradual economic growth and improvements in living standards.
+
+Low (L): 27 countries are classified as low-income. These are typically nations with constrained economic resources and development challenges, often requiring international aid and having lower levels of healthcare and educational attainment.
+
+
+```{r}
+status_frequency <- table(df_vars$Income)
+status_frequency
+
+```
+
+
+## Task h: 
+
+**Frequency Table Analysis for Income Status**
+Results Interpretation:
+
+There is considerable diversity in income distribution among continents, as evidenced by the different percentages and frequencies across income categories.
+
+Europe has the highest proportion of high-income individuals (H), with over 76% falling into this category. This suggests a relatively affluent population in Europe compared to other continents.
+
+Africa has the highest percentage of individuals in the low-income category (L), with over 42% falling into this bracket. This highlights significant economic challenges faced by a considerable portion of the African population.
+
+Americas have a substantial proportion of individuals in the upper-middle-income category (UM), indicating a sizable affluent segment.
+
+Asia shows notable proportions in the lower-middle-income (LM) and low (L) categories, suggesting a low-income population in these regions.
+
+Oceania has countries with an equal distribution between high and middle income.
+
+```{r}
+
+status_by_continent <- table(df_vars$continent, df_vars$Income)
+
+
+freq<- as.data.frame.matrix(status_by_continent)
+
+
+relative_freq <- apply(freq, 1, function(x) x / sum(x))
+
+
+relative_freq <- round(relative_freq * 100, 2)
+
+freq<-t(freq)
+order <- c("H", "UM", "LM", "L")
+
+# Reorder the rows of freq and relative_freq data frames
+freq <- freq[order, , drop = FALSE]
+relative_freq <- relative_freq[order, , drop = FALSE]
+
+freq
+relative_freq
+```
+
+## Task i: 
+
+**Identifying the countries which are the only ones in their respective group**
+Results Interpretation:
+Africa: Seychelles is the sole high-income country, a unique economic position in the continent.
+Europe: Ukraine is unique as the only lower-middle-income country, reflecting specific regional economic conditions.
+```{r}
+
+status_by_continent <- table(df_vars$continent, df_vars$Income)
+
+
+unique_countries <- list()
+
+
+for (continent in rownames(status_by_continent)) {
+  for (income_status in colnames(status_by_continent)) {
+    frequency <- status_by_continent[continent, income_status]
+    if (!is.na(income_status) && frequency == 1) {
+     
+      unique_country <- df_vars$country[df_vars$continent == continent & df_vars$Income == income_status & !is.na(df_vars$country) & !is.na(df_vars$Income)]
+    
+      unique_country <- unique_country[!is.na(unique_country)]
+
+      if (length(unique_country) > 0) {
+        unique_countries[[length(unique_countries) + 1]] <- list(continent = continent, income_status = income_status, country = unique_country)
+      }
+    }
+  }
+}
+
+
+for (unique_country_info in unique_countries) {
+  cat("Unique country in", unique_country_info$continent, "with income status", unique_country_info$income_status, ":", unique_country_info$country, "\n")
+}
+
+```
+
+## Task j: 
+
+**Number of Sub-Regions by Continent**
+
+Granularity Analysis:
+Africa is split into 2, Asia 5, Europe 4 and Oceania 4 sub-regions and America into 2 sub-regions.
+```{r}
+region_by_continent <- table(df_vars$region,df_vars$continent)
+
+col_sums <- colSums(region_by_continent)
+
+non_zero_rows <- apply(region_by_continent != 0, 2, sum)
+print(non_zero_rows)
+```
+
+## Task k: 
+**Income Distribution in Americas' Subregions**
+There are no low income countries. North America countries are all high income countries and South America has mostly upper middle and high income countries.
+```{r}
+subregions <- df_vars[df_vars$region %in% c("Northern America", "Latin America and the Caribbean"), ]
+
+# Calculate frequency distribution of income status within subregions
+income_freq <- table(subregions$region, subregions$Income)
+
+# Print frequency distribution
+print(income_freq)
+
+
+```
+## Task j: 
+ 
+**Low-Middle Income Countries in the Americas**
+List the low-middle income countries in the Americas and check if they are primarily small island states.
+
+Country Analysis:
+
+Central and South America: Countries like Belize, Bolivia, and Honduras show that not all low-middle-income nations are small island states, challenging common perceptions.
+```{r}
+LM_countries_americas <- df_vars[complete.cases(df_vars$continent, df_vars$Income), ]
+
+
+LM_countries_americas <- LM_countries_americas[LM_countries_americas$continent == "Americas" & LM_countries_americas$Income == "LM", "country"]
+
+
+print(LM_countries_americas)
+
+
+
+LM_countries_df <- df_vars[df_vars$country %in% LM_countries_americas, ]
+
+
+LM_countries_regions <- LM_countries_df$region
+
+
+print(LM_countries_regions)
+
+```
+
+## Task m: 
+
+**Average Values by Income Status**
+Calculate the average values for median age, youth unemployment rate, and net migration rate, separated by income status. The results are ordered based on the proper income status classes.
+
+Demographic and Economic Indicators Analysis:
+
+Median Age: The median age tends to increase as income status rises, which is a common trend observed globally. Higher income categories usually correlate with older populations due to factors such as access to better healthcare and education, leading to longer life expectancy.
+
+Youth Unemployment Rate: The youth unemployment rate appears to vary across income categories. Lower-income categories might have higher youth unemployment rates due to limited access to quality education and employment opportunities. Conversely, higher-income categories might have lower youth unemployment rates due to better educational and job prospects.
+
+Migration Rate: The migration rate also shows variation across income categories. Positive migration rates in the high-income category might indicate that individuals are attracted to regions with better economic opportunities and living standards. Negative migration rates in the lower-income categories could imply emigration due to economic challenges or seeking better opportunities elsewhere.
+
+
+```{r}
+
+average_values <- aggregate(cbind(median_age, youth_unempl_rate, migration_rate) ~ Income, data = df_vars, FUN = mean)
+
+
+income_order <- c("H", "UM", "LM", "L")
+
+average_values <- average_values[match(income_order, average_values$Income), ]
+
+print(average_values)
+
+
+```
+## Task n: 
+
+**Standard Deviation by Income Status**
+Calculate the standard deviation for median age, youth unemployment rate, and net migration rate across different income status classes.
+
+Insight Analysis:
+Median Age Standard Deviation: The standard deviation of median age within each income category indicates the variability  ages. Higher standard deviation values suggest greater variability in ages within that income category. For example, a lower standard deviation in the lower-income categories (L and LM) imply a lower range of ages due to various socio-economic factors such as income.
+
+Youth Unemployment Rate Standard Deviation: The standard deviation of youth unemployment rates within each income category shows the dispersion  of unemployment rates among the youth population. Higher standard deviation values suggest greater disparities in employment opportunities or economic conditions within that income category. For instance, a higher standard deviation in the lower-income categories indicates greater disparities in access to employment opportunities for youth and we can see the highest in Upper-middle counties.
+
+Migration Rate Standard Deviation: The standard deviation of migration rates within each income category reflects the variability or dispersion of migration patterns. Higher standard deviation values suggest greater variation in migration rates within that income category. For example, a higher standard deviation in the high-income category imply diverse migration patterns, including both immigration and emigration, reflecting the region's attractiveness for both job seekers and individuals seeking better living standards.
+
+As results we can see that the upper-middle income countries have the highest variation in median age and youth unemployment rate but the highest migration rate is for the high income countries.
+
+```{r}
+
+sd_values <- aggregate(cbind(median_age_sd = median_age, youth_unempl_rate_sd = youth_unempl_rate, migration_rate_sd = migration_rate) ~ Income, data = df_vars, FUN = sd)
+
+
+income_order <- c("H", "UM", "LM", "L")
+
+
+sd_values <- sd_values[match(income_order, sd_values$Income), ]
+
+
+print(sd_values)
+
+```
+
+## Task o: 
+**Average Values by Income Status and Continent**
+Calculate the average values for each income status and continent combination.
+
+Detailed Regional Analysis:
+
+High-income countries in Europe and Asia show higher median ages and better youth employment conditions compared to their African counteries, indicating regional disparities in economic development and demographic structure also Oceania hsa negative migration rate for all inccome categories indicating high tendancy for imigration.
+```{r}
+
+average_values <- aggregate(cbind(median_age, youth_unempl_rate, migration_rate) ~ Income + continent, data = df_vars, FUN = mean)
+
+income_order <- c("H", "UM", "LM", "L")
+
+
+average_values$Income <- factor(average_values$Income, levels = income_order)
+
+
+print(average_values)
+
+```
+
+## Task p: 
+
+**Identify Countries Doing Well**
+Identify countries that are in the top 25% of their continent in terms of net migration rate and in the bottom 25% for youth unemployment rate.
+
+Performance Analysis:
+
+Europe:	
+Switzerland has the lowest unemployment rate and Austria has the lowest migration rate. In contrast,Norway has the highest unemployment rate and Malta has the highest migration rate.
+Africa:
+Guinea has the lowest unemployment rate and Madagascar has the lowest migration rate.
+Asia:
+Qatar has the lowest unemployment rate and Israel has the lowest migration rate and also
+Bahrain has the highest unemployment rate and also Bahrain has the highest migration rate.
+Oceania:
+Papua New Guinea has the lowest unemployment rate and Palau has the lowest migration rate.
+Americas:
+United States has the lowest unemployment rate and migration rate.
+```{r}
+quantiles_df <- df_vars %>%
+  group_by(continent) %>%
+  mutate(
+    quantile_migration = quantile(migration_rate, probs = 0.75, na.rm = TRUE),
+    quantile_unemployment = quantile(youth_unempl_rate, probs = 0.25, na.rm = TRUE)
+  )
+
+filtered_countries <- quantiles_df %>%
+  filter(migration_rate >= quantile_migration & youth_unempl_rate <= quantile_unemployment) %>%
+  select(continent, everything())  # Move continent column to the first position
+
+filtered_countries <- as.data.frame(filtered_countries)
+unique_continents <- unique(filtered_countries$continent)
+for (continent in unique_continents) {
+  print(filtered_countries[filtered_countries$continent == continent, ])
+  cat("\n")  # Add a newline for better separation between continents
+}
+
+
+
+```
+## Task r:
+**Export**
+```{r}
+write.table(df_vars, file = "df_vars.csv", sep = ";",
+row.names = FALSE, na = ".")
+
+```
